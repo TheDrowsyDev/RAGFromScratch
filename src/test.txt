@@ -1,0 +1,74 @@
+Introduction
+
+Environment variables are used nearly ubiquitously. Whether you’re deploying a single app or deploying a pod of containers, you’re bound to find some environment variables dictating how that application is configured. Often times, sensitive information such as usernames and passwords are set via these variables, which poses numerous potential security and administrative concerns, two of which are as follows: (1) How do you ensure that all the variables required are set during startup? and (2) How do you enforce the constraints on these variables such as length, number of characters, etc.
+
+Regarding the former concern, common practice is to simply set the variable in an environment template that is copied by whoever is deploying the application. The default value is then often recommended to be changed, but not always required. In the common case where developers do not check for the presence of the environment variable being changed from the default, you now have a serious problem — anyone who can view your code base has a great first brute-force attempt at logging into that application using the default password.
+
+As for the latter concern, this falls down the same slope — it can be a lot of extra work (and often times, not straightforward) to set and enforce complexity requirements for every application in your deployment. What your left with is the potential for non-compliant or simply insufficient passwords.
+
+This is where Securenv comes in — an application I developed as a personal project to get familiar with creating an actual PyPi package. Instead of setting default passwords and hoping users update them to sufficient complexity, Securenv allows developers to define what variables to set, and with what requirements, using a simple metadata file. This app will read in the file and provide a textual user interface (TUI) to set all the variables, ensuring their complexity requirements are met. In this blog, I’ll walk through the basic function of Securenv.
+Architecture
+
+I say architecture pretty loosely here… Securenv is a small application, and that’s on purpose. When I set out to create this project, I had three goals in mind:
+
+(1) Solve the initial problem outlined in the above section
+
+(2) Plan, design, and implement the application with a small set of well-defined requirements
+
+(3) Publish my first PyPi package
+
+I’ll touch more on my experience with some of these goals at the end, but for now, let’s outline the code base.
+
+Securenv is built on top of textual — a library for building terminal user interfaces (TUI). Using textual allowed me to build the application rapidly, without needing to learn the ins-and-outs of how TUI’s work (though, that would be a fun project for another time). Instead, I was able to focus most of my efforts on scoping the functionality, thanks to the pre-built widgets and baked in tcss — a CSS-like language for styling your textual application.
+
+Outside of textual, I also leveraged the schema — a library for enforcing the structure of dictionary objects in Python. This allowed me to ensure that the metadata passed in by users was valid before the TUI was even spun up. Validation errors would be caught right away, and prompt the user to fix them before continuing.
+Installation and Usage
+
+Now, to the fun parts — actually using the application! To install, simply use pip. Note that securenv, at the time of running, is targeted as Linux systems running Python3.8 or higher.
+
+pip install securenv
+
+Once installed, the usage is as follows:
+
+usage: securenv [-h] metadata_file env_file
+
+Simple TUI for Defining and Constraining Environment Variables
+
+positional arguments:
+  metadata_file  YAML Metadata file describing variables to set.
+  env_file       Environment file to set ENV vars in.
+
+options:
+  -h, --help     show this help message and exit
+
+Securenv has the concept of ‘var groups’. Essentially, a var group represents a collection of environment variables that should be logically grouped together (typically, variables for the same application). Each group is required to have a ‘title’ key, representing what the variable group should be referred to as, and a collection of ‘var’ objects. Each var object represents an actual environment variable to set.
+
+A var object has three required keys: (1) the name of the environment variable, (2) a placeholder for the UI to use in the input fields and (3) whether the variable is sensitive or not. Sensitive variables will be obfuscated during run-time to prevent pesky shoulder surfing.
+
+The real meat of the var object is inside the optional ‘complexity’ block, which specifies the constraints placed on that specific variable. At the time of writing, the following fields are supported in this block:
+
+    min_length → Minimum length of the variable (defaults to 25)
+    max_length → Maximum length of the variable (defaults to 5)
+    numbers → Minimum number of digits required in the variable (defaults to 0)
+    symbols → Minimum number of symbols required in the variable (defaults to 0)
+    upper_case → Minimum number of uppercase characters required in the variable (defaults to 0)
+
+NOTE: The symbols field currently checks the following list: “^!@#$”. This is due in part to constraints with the regex system in textual.
+
+Once you’ve set up your metadata file, run the application:
+
+securenv mymetadata.yaml myenv.env
+
+You should be presented with the following screen:
+TUI for Securenv
+
+You’ll notice that you cannot proceed to the next screen of variables until the current screen meets the specified requirements. Once done, you’re env file will either be updated or created based on the variables specified in the TUI.
+
+For more information or to see the code base, refer to the GitHub: https://github.com/TheDrowsyDev/securenv
+Introspective
+
+I wanted to set aside a section to talk about my experience creating the application. As mentioned prior, this was my first time creating a PyPi package, which proved to be an extremely informative experience. Up until this point, I had never worked with setuptools, defining a manifest, or building Python packages for distribution. I highly recommend building out a PyPi package yourself. It doesn’t have to be industry disrupting, I know mine sure is not, but the experience of building an application and pushing it the PyPi index is one I think every Python developer should go through at least once.
+
+To add on to this, I want to touch on the scope of the project. I don’t expect this package to be used by… anyone. However, I did this for one reason — completion. Let me ask a question — how many applications have you started in your free time, then abandoned to let the code base collect dust? I’ll go first — a lot. So, for this project, I set out with the goal in mind to design, plan, and implement a small project with a handful of well-defined features. I started with a notepad and wrote down roughly 6 or 7 features that I wanted to implement, then wrote the code base in the matter of a couple hours. Most of the rest of my time was spent learning about GitHub actions and leverage textual’s awesome testing functions to write Pytests for the application. What I want to drive home here is that while building out huge applications like social media clones, game engines, compilers, etc. can be extremely educational and rewarding experiences, small applications such as this should not be overlooked. They allow you to experience the full cycle of development, dive into parts of engineering you may not have explored like automated code analysis, and write extensive tests without feeling burnt out from the effort of just writing the code. So, if you’re itching to write make a side project, start small. Build out bigger applications when you’re ready, but I’ve found a new love for building out projects in my spare time by scaling back my ambition and being reasonable with my attention.
+
+If you’ve made it this far, thank you for reading! I’ve been out of the blog space for a few months due to some personal health issues, but being on the mend, I’m hoping to get back into writing more frequently, so stayed tuned for more blogs in the (hopefully) not so distance future. Cheers, and happy coding!
